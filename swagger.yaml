@@ -1,0 +1,794 @@
+openapi: 3.0.3
+info:
+    title: Foodmall Microservices
+    description: Бэкенд для Foodmall состоит из 9 микросервисов и Gateway (входная точка для всех запросов). Gateway перенаправляет исходящие от клиента запросы на соответствующие микросервисы через собственный диспетчер запросов.
+    version: 1.0.0
+externalDocs:
+    description: Документация 1C API
+    url: https://fitness1cv3.docs.apiary.io/#reference
+
+tags:
+    - name: Авторизация
+      externalDocs:
+          description: Документация 1С
+          url: https://fitness1cv3.docs.apiary.io/#reference/0
+
+    - name: Пользователь
+      externalDocs:
+          description: Документация 1С
+          url: https://fitness1cv3.docs.apiary.io/#reference/1
+
+    - name: Расписание
+      externalDocs:
+          description: Документация 1С
+          url: https://development.hungry.ninja/api/consumer/docs/#
+
+    - name: Доставка
+      externalDocs:
+          description: Документация HungryNinja
+          url: https://development.hungry.ninja/api/consumer/docs/#
+
+paths:
+    # <------------------------------ AUTH -------------------------------->
+    /api/auth/auth_code:
+        get:
+            tags:
+                - Авторизация
+            summary: Запрос на получение кода подтверждения.
+            operationId: getPhoneConfirmationCode
+            parameters:
+                - in: query
+                  name: phone
+                  schema:
+                      type: string
+                  required: true
+            responses:
+                '200':
+                    description: Код отправлен на указанный номер телефона.
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/GetPhoneConfirmationCodeRO'
+
+        post:
+            tags:
+                - Авторизация
+            summary: Подтверждение кода авторизации.
+            description: Создает пользователя во внутренней базе данных.
+            operationId: confirmPhone
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/ConfirmPhoneDTO'
+                required: true
+            responses:
+                '201':
+                    description: Номер подтвержден.
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ConfirmPhoneRO'
+
+                '403':
+                    description: Ошибка валидации
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorResponse_403'
+
+    /api/auth/token:
+        get:
+            tags:
+                - Авторизация
+            summary: Проверяет JWT-токен.
+            description: Используется middleware-ом. Отдельно используется только на этапе разработки. В случае, если токен действителен, возвращает usertoken системы 1С.
+            operationId: getUserToken
+            responses:
+                '200':
+                    description: Номер подтвержден.
+
+                '403':
+                    description: Ошибка валидации
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorResponse_403'
+
+            security:
+                - jwt: []
+
+    # <----------------------------- SERVICES ------------------------------>
+
+    # <----------------------------- USER ----------------------------->
+    /api/users:
+        get:
+            tags:
+                - Пользователь
+            summary: Находит пользователя по usertoken и возвращает данные для экрана профиля.
+            operationId: getUserByUserToken
+            responses:
+                '200':
+                    description: Данные о запрашиваемом пользователе.
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/GetUserProfileRO'
+
+                '404':
+                    description: Пользователь не найден.
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorResponse_404'
+            security:
+                - jwt: []
+
+    # <----------------------------- PAYMENT ----------------------------->
+
+    # <----------------------------- BONUSES ----------------------------->
+
+    # <----------------------------- DELIVERY ----------------------------->
+    /api/delivery/restaurants:
+        get:
+            tags:
+                - Доставка
+            summary: Возвращает список ресторанов.
+            description: Возвращает все рестораны, работающие по указанному адресу либо комплексу (в случае, если передан параметр table).
+            operationId: getRestaurants
+            parameters:
+                - in: query
+                  name: table
+                  schema:
+                      type: string
+                      description: Номер столика, к которому нужно доставить заказ. Является взаимоисключающим по отношению к параметру address.
+
+                - in: query
+                  name: address
+                  schema:
+                      type: string
+                      description: Адрес, по которому нужно доставить заказ. Является взаимоисключающим по отношению к параметру table.
+
+            responses:
+                '200':
+                    description: Список ресторанов.
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/GetRestaurantsRO'
+
+    /api/delivery/restaurants/{id}:
+        get:
+            tags:
+                - Доставка
+            summary: Возвращает меню определенного ресторана.
+            operationId: getMenuByRestaurantId
+            parameters:
+                - in: path
+                  name: id
+                  schema:
+                      type: string
+                      description: id ресторана, для которого запрашивается меню.
+                  required: true
+
+            responses:
+                '200':
+                    description: Меню выбранного ресторана.
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/GetMenuByRestaurantRO'
+
+    /api/delivery/orders:
+        get:
+            tags:
+                - Доставка
+            summary: Возвращает все заказы пользователя.
+            operationId: getUserOrders
+            responses:
+                '200':
+                    description: Заказы пользователя.
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/GetUserOrdersRO'
+            security:
+                - jwt: []
+
+    /api/delivery/order/{orderId}:
+        get:
+            tags:
+                - Доставка
+            summary: Возвращает определенный заказ пользователя по orderId.
+            operationId: getUserOrderByOrderId
+            parameters:
+                - in: path
+                  name: orderId
+                  schema:
+                      type: string
+                      description: id заказа.
+                  required: true
+            responses:
+                '200':
+                    description: Заказы пользователя.
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/GetUserOrderByOrderIdRO'
+            security:
+                - jwt: []
+
+    /api/delivery/addresses:
+        post:
+            tags:
+                - Доставка
+            summary: Добавление нового адреса
+            operationId: addNewAddress
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/AddNewAddressDTO'
+                required: true
+            responses:
+                '201':
+                    description: Адрес добавлен.
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/AddNewAddressRO'
+
+                '401':
+                    description: Ошибка доступа.
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorResponse_401'
+
+                '403':
+                    description: Ошибка валидации.
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorResponse_403'
+            security:
+                - jwt: []
+
+        get:
+            tags:
+                - Доставка
+            summary: Возвращает все адреса пользователя.
+            operationId: getUserAddresses
+            responses:
+                '200':
+                    description: Заказы пользователя.
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/GetUserOrderByOrderIdRO'
+
+                '401':
+                    description: Ошибка доступа.
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorResponse_401'
+
+                '403':
+                    description: Ошибка валидации.
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorResponse_403'
+
+            security:
+                - jwt: []
+
+    /api/delivery/addresses/{id}:
+        patch:
+            tags:
+                - Доставка
+            summary: Вносит изменения в адрес пользователя.
+            parameters:
+                - in: path
+                  name: id
+                  schema:
+                      type: string
+                  required: true
+
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/EditAddressDTO'
+                required: true
+
+            operationId: editAddress
+            responses:
+                '200':
+                    description: Обновленный адрес пользователя.
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/EditAddressRO'
+
+                '401':
+                    description: Ошибка доступа.
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorResponse_401'
+
+                '403':
+                    description: Ошибка валидации.
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorResponse_403'
+
+            security:
+                - jwt: []
+
+        delete:
+            tags:
+                - Доставка
+            summary: Вносит изменения в адрес пользователя.
+            parameters:
+                - in: path
+                  name: id
+                  schema:
+                      type: string
+                  required: true
+            operationId: deleteAddressById
+            responses:
+                '200':
+                    description: Адрес удален.
+
+                '401':
+                    description: Ошибка доступа.
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorResponse_401'
+
+            security:
+                - jwt: []
+
+    # <----------------------------- SCHEDULE
+    /api/schedule:
+        get:
+            tags:
+                - Расписание
+            summary: Возвращает сортированный по датам список занятий.
+            operationId: getSchedule
+            responses:
+                '200':
+                    description: Заказы пользователя.
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/GetUserOrderByOrderIdRO'
+
+                '401':
+                    description: Ошибка доступа.
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorResponse_401'
+
+                '403':
+                    description: Ошибка валидации.
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorResponse_403'
+
+            security:
+                - jwt: []
+
+    # ----------------------------->
+
+    # <----------------------------- MEMBERSHIP ----------------------------->
+
+    # <----------------------------- PARKING ----------------------------->
+
+    # <----------------------------- components  ---------------------------->
+components:
+    schemas:
+        ServerResponseTemplate:
+            type: object
+            properties:
+                status:
+                    type: string
+
+                statusCode:
+                    type: integer
+                    example: 200
+                message:
+                    type: string
+                data:
+                    type: object
+
+        ErrorResponse_401:
+            type: object
+            properties:
+                status:
+                    type: string
+                    example: failure
+                statusCode:
+                    type: integer
+                    example: 401
+                message:
+                    type: string
+                    example: Ошибка доступа.
+                data:
+                    type: object
+
+        ErrorResponse_403:
+            type: object
+            properties:
+                status:
+                    type: string
+                    example: 'failure'
+                statusCode:
+                    type: string
+                    example: 403
+                message:
+                    type: string
+                    example: 'Ошибка.'
+                data:
+                    type: object
+
+        ErrorResponse_404:
+            type: object
+            properties:
+                status:
+                    type: string
+                    example: failure
+                statusCode:
+                    type: integer
+                message:
+                    type: string
+                    example: Не найдено.
+
+        GetPhoneConfirmationCodeRO:
+            type: object
+            properties:
+                status:
+                    type: string
+                    example: success
+                statusCode:
+                    type: integer
+                    example: 200
+                message:
+                    type: string
+                    example: Код отправлен на указанный номер телефона.
+
+        ConfirmPhoneDTO:
+            type: object
+            required:
+                - phone
+                - code
+                - publicOfferAgreement
+                - offersAndNewsReceivingAgreement
+            properties:
+                phone:
+                    type: string
+                    example: 79xxxxxxxxx
+                code:
+                    type: string
+                    example: 1234
+                publicOfferAgreement:
+                    type: boolean
+                offersAndNewsReceivingAgreement:
+                    type: boolean
+
+        ConfirmPhoneRO:
+            type: object
+            properties:
+                status:
+                    type: string
+                    example: success
+                statusCode:
+                    type: integer
+                    example: 200, 201
+                message:
+                    type: string
+                    example: Номер телефона подтвержден.
+
+        GetUserProfileRO:
+            type: object
+            properties:
+                status:
+                    type: string
+                    example: success
+                statusCode:
+                    type: integer
+                    example: 200
+                message:
+                    type: string
+                    example:
+                data:
+                    type: object
+                    properties:
+                        bonuses:
+                            type: integer
+                            description: Текущий баланс бонусов.
+                        bonusLevel:
+                            type: integer
+                            enum:
+                                - 0
+                                - 1
+                                - 2
+                                - 3
+                        visitsRequired:
+                            type: integer
+                            description: Количество визитов, необходимое для следующего уровня.
+                        bonusesRequired:
+                            type: integer
+                            description: Количество бонусов, необходимое для следующего уровня.
+                        credit:
+                            type: number
+                            description: Текущий долг пользователя.
+                        phone:
+                            type: string
+                            example: '+7 964 905 97 22'
+
+        Restaurant:
+            type: object
+            properties:
+                id:
+                    type: integer
+                title:
+                    type: string
+                subtitle:
+                    type: string
+                image:
+                    type: string
+
+        GetRestaurantsRO:
+            type: object
+            properties:
+                status:
+                    type: string
+                    example: success
+                statusCode:
+                    type: integer
+                    example: 200
+                data:
+                    type: array
+                    items:
+                        $ref: '#/components/schemas/Restaurant'
+
+        MenuItem:
+            type: object
+            properties:
+                id:
+                    type: number
+                title:
+                    type: string
+                description:
+                    type: string
+                image:
+                    type: string
+                price:
+                    type: number
+
+        Category:
+            type: object
+            properties:
+                id:
+                    type: number
+                title:
+                    type: string
+                producets:
+                    type: array
+                    items:
+                        $ref: '#/components/schemas/MenuItem'
+
+        GetMenuByRestaurantRO:
+            type: object
+            properties:
+                status:
+                    type: string
+                    example: success
+                statusCode:
+                    type: integer
+                    example: 200
+                data:
+                    type: array
+                    items:
+                        $ref: '#/components/schemas/Category'
+
+        OrderBriefly:
+            type: object
+            properties:
+                id:
+                    type: string
+                stage:
+                    type: integer
+                    enum:
+                        - 1
+                        - 2
+                        - 3
+                        - 4
+                totalPrice:
+                    type: number
+                date:
+                    type: string
+                    description: ISO формат
+                orderNumber:
+                    type: string
+
+        GetUserOrdersRO:
+            type: object
+            properties:
+                status:
+                    type: string
+                    example: success
+                statusCode:
+                    type: integer
+                    example: 200
+                data:
+                    type: array
+                    items:
+                        $ref: '#/components/schemas/OrderBriefly'
+
+        Address:
+            type: object
+            required:
+                - street
+                - building
+            properties:
+                street:
+                    type: string
+                building:
+                    type: string
+                apt:
+                    type: integer
+                entrance:
+                    type: integer
+                floor:
+                    type: integer
+
+        Order:
+            type: object
+            properties:
+                id:
+                    type: string
+                stage:
+                    type: integer
+                    enum:
+                        - 1
+                        - 2
+                        - 3
+                        - 4
+
+                date:
+                    type: string
+                    description: ISO формат
+                bonusesAccrued:
+                    type: number
+                    description: Количество бонусов, начисленных за заказ.
+                products:
+                    type: array
+                    items:
+                        $ref: '#/components/schemas/MenuItem'
+                paymentMethod:
+                    type: string
+                deliveryAddress:
+                    $ref: '#/components/schemas/Address'
+                isDelivery:
+                    type: boolean
+                    description: Доставка или самовывоз.
+
+        GetUserOrderByOrderIdRO:
+            type: object
+            properties:
+                status:
+                    type: string
+                    example: success
+                statusCode:
+                    type: integer
+                    example: 200
+                message:
+                    type: string
+                data:
+                    $ref: '#/components/schemas/Order'
+
+        AddNewAddressDTO:
+            type: object
+            properties:
+                street:
+                    type: string
+                building:
+                    type: string
+                apt:
+                    type: integer
+                entrance:
+                    type: integer
+                floor:
+                    type: integer
+                additionalComments:
+                    type: string
+
+        EditAddressDTO:
+            type: object
+            properties:
+                street:
+                    type: string
+                building:
+                    type: string
+                apt:
+                    type: integer
+                entrance:
+                    type: integer
+                floor:
+                    type: integer
+                additionalComments:
+                    type: string
+
+        AddNewAddressRO:
+            type: object
+            properties:
+                status:
+                    type: string
+                    example: success
+                statusCode:
+                    type: integer
+                    example: 200
+                message:
+                    type: string
+                    example: Адрес добавлен.
+                data:
+                    $ref: '#/components/schemas/Address'
+
+        EditAddressRO:
+            type: object
+            properties:
+                status:
+                    type: string
+                    example: success
+                statusCode:
+                    type: integer
+                    example: 200
+                message:
+                    type: string
+                    example: Адрес изменен.
+                data:
+                    $ref: '#/components/schemas/Address'
+
+        Appointment:
+            type: object
+            properties:
+                id:
+                    type: integer
+                isBooked:
+                    type: boolean
+                startDate:
+                    type: string
+                    description: ISO формат.
+                endDate:
+                    type: string
+                    description: ISO формат.
+                title:
+                    type: string
+                employeeName:
+                    type: string
+
+        ScheduleForDay:
+            type: object
+            properties:
+                date:
+                    type: string
+                    description: ISO формат.
+                appointments:
+                    type: array
+                    items:
+                        $ref: '#/components/schemas/Appointment'
+
+    securitySchemes:
+        jwt:
+            type: apiKey
+            in: header
+            name: jwt

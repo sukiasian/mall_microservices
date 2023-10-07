@@ -1,0 +1,111 @@
+version: "3.4"
+services:
+    api_gateway:
+        build: ./api-gateway
+        depends_on:
+            redis_api_gateway:
+                condition: service_started
+                restart: true
+        ports:
+            - 8000:8000
+        networks:
+            - foodmall_backend_network
+
+    redis_api_gateway:
+        build:
+            dockerfile: ./api-gateway/redis.Dockerfile
+        ports:
+            - 6379
+        networks:
+            - foodmall_backend_network
+
+    auth:
+        build: ./auth-service
+        depends_on:
+            redis_auth:
+                condition: service_started
+                restart: true
+        ports:
+            - 9000:9000
+        networks:
+            - foodmall_backend_network
+
+    redis_auth:
+        build:
+            dockerfile: ./auth-service/redis.Dockerfile
+        ports:
+            - 6379
+        networks:
+            - foodmall_backend_network
+
+    delivery:
+        build: ./delivery-service
+        depends_on:
+            redis_delivery:
+                condition: service_started
+                restart: true
+        ports:
+            - 6000:6000
+        networks:
+            - foodmall_backend_network
+
+    redis_delivery:
+        build:
+            dockerfile: ./delivery-service/redis.Dockerfile
+        ports:
+            - 6379
+        networks:
+            - foodmall_backend_network
+
+    bonuses:
+        build: ./bonuses-service
+        ports:
+            - 3000:3000
+        networks:
+            - foodmall_backend_network
+
+    parking:
+        build: ./parking-service
+        ports:
+            - 7000:7000
+        networks:
+            - foodmall_backend_network
+
+    user:
+        build: ./user-service
+        ports:
+            - 7001:7001
+        networks:
+            - foodmall_backend_network
+
+    payment:
+        build: ./payment-service
+        ports:
+            - 10000:10000
+        networks:
+            - foodmall_backend_network
+
+    membership:
+        build: ./membership-service
+        ports:
+            - 8003:8003
+        networks:
+            - foodmall_backend_network
+
+    services:
+        build: ./services-service
+        ports:
+            - 4000:4000
+        networks:
+            - foodmall_backend_network
+
+    schedule:
+        build: ./schedule-service
+        ports:
+            - 5000:5000
+        networks:
+            - foodmall_backend_network
+
+networks:
+    foodmall_backend_network:
+        external: true

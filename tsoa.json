@@ -1,0 +1,9 @@
+{
+    "noImplicitAdditionalProperties": "throw-on-extras",
+    "spec": {
+        "outputDirectory": "./dist",
+        "specVersion": 3,
+        "controllerPathGlobs": ["./api-gateway/Controller.ts"]
+    },
+    "controllerPathGlobs": ["auth-service/src/Controller.ts"]
+}

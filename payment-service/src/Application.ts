@@ -1,0 +1,30 @@
+import * as express from 'express';
+import * as cors from 'cors';
+import * as cookieParser from 'cookie-parser';
+import GlobalErrorController from './error-controllers/GlobalErrorController';
+import CorsConfig from './CorsConfig';
+import { AbstractApplication } from './types/abstracts';
+
+export class Application implements AbstractApplication {
+    private expressInstance: express.Application = null;
+    private router: express.Router = null;
+
+    constructor(router: express.Router) {
+        this.expressInstance = express();
+        this.router = router;
+
+        this.configureApplication();
+    }
+
+    private configureApplication = (): void => {
+        // this.expressInstance.use(cors(CorsConfig.corsOptions));
+        this.expressInstance.use(express.json({ limit: '10Kb' }));
+        this.expressInstance.use(cookieParser());
+        this.expressInstance.use('/', this.router);
+        this.expressInstance.use(GlobalErrorController.handle);
+    };
+
+    public getExpressInstance = (): express.Application => {
+        return this.expressInstance;
+    };
+}

@@ -1,0 +1,8 @@
+*/node_modules
+*/log/
+**/*/*.log
+quick-building-service-template
+.vscode
+**/tsconfig.tsbuildinfo
+**/*/dist
+.idea
